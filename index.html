@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Emotion Sense - Powered by AI</title>
+    <style>
+        :root {
+            --bg-light: #f5f7fa;
+            --bg-dark: #1e1e2f;
+            --text-light: #333;
+            --text-dark: #141412;
+            --primary: #070610;
+            --accent: #ec4899;
+            --neutral: #cbd5e1;
+            --hover-bg: #eef2ff;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            transition: 0.3s ease;
+            display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+        }
+
+        .dark-mode {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        header {
+            text-align: center;
+            padding: 70px 10px;
+            background-color: var(--primary);
+            color: white;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 40px;
+            padding: 40px;
+        }
+
+        .upload-box, .webcam-box {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 360px;
+            transition: 0.3s ease;
+        }
+
+        .dark-mode .upload-box, .dark-mode .webcam-box {
+            background-color: #cdcdd5;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        #drop-area {
+            border: 2px dashed var(--primary);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        #drop-area.hover {
+            background-color: var(--hover-bg);
+        }
+
+        #fileElem {
+            display: none;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        #emoji {
+            font-size: 40px;
+            margin-top: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .dark-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 8px 16px;
+            background-color: #222;
+            color: white;
+            border: none;
+            border-radius: 6px;
+        }
+        footer {
+            margin-top: auto;
+            background-color: #222;
+            color: #eee;
+            text-align: center;
+            padding: 15px;
+            font-size: 14px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        footer a {
+            color: #4da6ff;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <header>EMOTION DETECTION</header>
+
+    <div class="container">
+        <!-- Upload Box -->
+        <div class="upload-box">
+            <h2>Upload Image</h2>
+            <div id="drop-area" onclick="fileElem.click()">
+                <p>Click or drag an image here</p>
+                <input type="file" id="fileElem" accept="image/*">
+            </div>
+            <div class="controls">
+                <button onclick="reset()">Reset</button>
+            </div>
+            <div id="result"></div>
+            <div id="emoji"></div>
+        </div>
+
+<div class="section">
+    <h3>🎥 Webcam</h3>
+    <video id="video" width="100%" autoplay></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <div class="controls">
+      <button class="btn" onclick="captureImage()">📸 Capture</button>
+      <button class="btn" onclick="resetAll()">🔄 Reset</button>
+    </div>
+    <div id="webcam-result"></div>
+    <div class="emoji" id="webcam-emoji"></div>
+  </div>
+  
+    </div>
+    <footer>
+        <p>© 2025 EmotionSense. All rights reserved.</p>
+    </footer>
+    <script>
+        const dropArea = document.getElementById('drop-area');
+        const fileElem = document.getElementById('fileElem');
+        const resultDiv = document.getElementById('result');
+        const emojiDiv = document.getElementById('emoji');
+
+        const emojiMap = {
+            "Happy": "😊",
+            "Sad": "😢",
+            "Angry": "😠",
+            "Surprise": "😲",
+            "Neutral": "😐",
+            "Fear": "😨",
+            "Disgust": "🤢"
+        };
+
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('hover');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('hover');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('hover');
+            const file = e.dataTransfer.files[0];
+            if (file) sendImage(file);
+        });
+
+        fileElem.addEventListener('change', () => {
+            const file = fileElem.files[0];
+            if (file) sendImage(file);
+        });
+
+        function sendImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('http://127.0.0.1:5000/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.emotion) {
+                    resultDiv.innerText = `Predicted Emotion: ${data.emotion}`;
+                    emojiDiv.innerText = emojiMap[data.emotion] || "";
+                } else {
+                    resultDiv.innerText = `Error: ${data.error}`;
+                    emojiDiv.innerText = "";
+                }
+            })
+            .catch(err => {
+                resultDiv.innerText = 'Prediction failed. Make sure the server is running.';
+                emojiDiv.innerText = "";
+                console.error(err);
+            });
+        }
+
+        function reset() {
+            resultDiv.innerText = '';
+            emojiDiv.innerText = '';
+            fileElem.value = '';
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+        const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const webcamResult = document.getElementById('webcam-result');
+const webcamEmoji = document.getElementById('webcam-emoji');
+
+// Start the webcam stream
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    video.srcObject = stream;
+  })
+  .catch(err => {
+    console.error("Webcam access denied:", err);
+    webcamResult.innerText = "⚠️ Please allow webcam access.";
+  });
+
+// Capture and send the webcam image
+function captureImage() {
+  const context = canvas.getContext('2d');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob(blob => {
+    const formData = new FormData();
+    formData.append('image', blob, 'webcam.jpg');
+
+    fetch('http://127.0.0.1:5000/predict', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.emotion) {
+        webcamResult.innerText = `Predicted Emotion: ${data.emotion}`;
+        webcamEmoji.innerText = emojiMap[data.emotion] || '';
+      } else {
+        webcamResult.innerText = `Error: ${data.error}`;
+      }
+    })
+    .catch(err => {
+      webcamResult.innerText = 'Prediction failed.';
+      console.error(err);
+    });
+  }, 'image/jpeg');
+}
+function resetAll() {
+    resultDiv.innerText = '';
+    emojiDiv.innerText = '';
+    webcamResult.innerText = '';
+    webcamEmoji.innerText = '';
+    fileElem.value = null;
+  }
+  
+    </script>
+
+</body>
+</html>
